@@ -11,6 +11,17 @@ import { supabase, Linea } from '../lib/supabase';
 
 type ClassificationFilter = 'ALL' | Linea['clasificacion'];
 
+function roundToMillis(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+function parseNullableNumber(raw: string): number | null {
+  if (raw.trim() === '') return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  return roundToMillis(n);
+}
+
 export default function AdminLinesPage() {
   const queryClient = useQueryClient();
 
@@ -83,8 +94,7 @@ export default function AdminLinesPage() {
     });
   }, [lineas, searchQuery, classificationFilter]);
 
-  const isAnyFilterActive =
-    searchQuery.trim().length > 0 || classificationFilter !== 'ALL';
+  const isAnyFilterActive = searchQuery.trim().length > 0 || classificationFilter !== 'ALL';
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -105,9 +115,17 @@ export default function AdminLinesPage() {
   const handleSubmit = () => {
     if (!editingLine) return;
 
+    const updates: Partial<Linea> = {
+      numero: formData.numero,
+      nombre: formData.nombre, // si quieres mandar null cuando esté vacío, te lo ajusto
+      clasificacion: formData.clasificacion,
+      km_inicio: formData.km_inicio === null ? null : roundToMillis(formData.km_inicio),
+      km_fin: formData.km_fin === null ? null : roundToMillis(formData.km_fin),
+    };
+
     updateLineaMutation.mutate({
       id: editingLine.id,
-      updates: formData, // ya no manda prioridad
+      updates,
     });
   };
 
@@ -198,7 +216,7 @@ export default function AdminLinesPage() {
                     <div className="mt-3 text-sm text-[#6B7280]">
                       <span className="font-medium text-[#111827]">Rango Km: </span>
                       {linea.km_inicio !== null && linea.km_fin !== null
-                        ? `${linea.km_inicio.toFixed(1)} - ${linea.km_fin.toFixed(1)} km`
+                        ? `${linea.km_inicio.toFixed(3)} - ${linea.km_fin.toFixed(3)} km`
                         : '-'}
                     </div>
 
@@ -233,76 +251,76 @@ export default function AdminLinesPage() {
               {/* Tablet/Desktop: table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#E5E7EB]">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-[#111827]">
-                    Línea
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-[#111827]">
-                    Nombre
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-[#111827]">
-                    Rango Km
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-[#111827]">
-                    Clasificación
-                  </th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-[#111827]">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLineas.map((linea) => (
-                  <tr
-                    key={linea.id}
-                    className="border-b border-[#E5E7EB] hover:bg-[#F7FAF8] transition-colors"
-                  >
-                    <td className="py-3 px-4">
-                      <p className="font-semibold text-[#111827]">{linea.numero}</p>
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="text-sm text-[#6B7280]">{linea.nombre || '-'}</p>
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="text-sm text-[#6B7280]">
-                        {linea.km_inicio !== null && linea.km_fin !== null
-                          ? `${linea.km_inicio.toFixed(1)} - ${linea.km_fin.toFixed(1)} km`
-                          : '-'}
-                      </p>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge variant="classification" classification={linea.clasificacion}>
-                        {linea.clasificacion}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEdit(linea)}
-                          className="p-2 hover:bg-[#DDF3EA] rounded-lg transition-colors text-[#6B7280] hover:text-[#157A5A]"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setLineToDelete(linea)}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors text-[#6B7280] hover:text-red-600"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                  <thead>
+                    <tr className="border-b border-[#E5E7EB]">
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-[#111827]">
+                        Línea
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-[#111827]">
+                        Nombre
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-[#111827]">
+                        Rango Km
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-[#111827]">
+                        Clasificación
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-[#111827]">
+                        Acciones
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLineas.map((linea) => (
+                      <tr
+                        key={linea.id}
+                        className="border-b border-[#E5E7EB] hover:bg-[#F7FAF8] transition-colors"
+                      >
+                        <td className="py-3 px-4">
+                          <p className="font-semibold text-[#111827]">{linea.numero}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-sm text-[#6B7280]">{linea.nombre || '-'}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-sm text-[#6B7280]">
+                            {linea.km_inicio !== null && linea.km_fin !== null
+                              ? `${linea.km_inicio.toFixed(3)} - ${linea.km_fin.toFixed(3)} km`
+                              : '-'}
+                          </p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge variant="classification" classification={linea.clasificacion}>
+                            {linea.clasificacion}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleEdit(linea)}
+                              className="p-2 hover:bg-[#DDF3EA] rounded-lg transition-colors text-[#6B7280] hover:text-[#157A5A]"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setLineToDelete(linea)}
+                              className="p-2 hover:bg-red-50 rounded-lg transition-colors text-[#6B7280] hover:text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
 
-                {!isLoading && filteredLineas.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-10 text-center text-sm text-[#6B7280]">
-                      No se encontraron líneas con los filtros actuales.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
+                    {!isLoading && filteredLineas.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-10 text-center text-sm text-[#6B7280]">
+                          No se encontraron líneas con los filtros actuales.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
                 </table>
               </div>
             </>
@@ -349,28 +367,30 @@ export default function AdminLinesPage() {
               <Input
                 label="KM Inicio"
                 type="number"
-                step="0.1"
-                value={formData.km_inicio || ''}
+                step="0.001"
+                min="0"
+                value={formData.km_inicio ?? ''}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    km_inicio: e.target.value ? parseFloat(e.target.value) : null,
+                    km_inicio: parseNullableNumber(e.target.value),
                   })
                 }
-                placeholder="0.0"
+                placeholder="0.000"
               />
               <Input
                 label="KM Fin"
                 type="number"
-                step="0.1"
-                value={formData.km_fin || ''}
+                step="0.001"
+                min="0"
+                value={formData.km_fin ?? ''}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    km_fin: e.target.value ? parseFloat(e.target.value) : null,
+                    km_fin: parseNullableNumber(e.target.value),
                   })
                 }
-                placeholder="100.0"
+                placeholder="100.000"
               />
             </div>
 

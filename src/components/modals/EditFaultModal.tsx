@@ -6,7 +6,7 @@ import Input from '../ui/Input';
 import SearchableSelect from '../ui/SearchableSelect';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
-import { Linea,  supabase, updateFalla, Falla } from '../../lib/supabase';
+import { Linea, supabase, updateFalla, Falla } from '../../lib/supabase';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -24,6 +24,11 @@ interface EditFormData {
   hora: string;
   descripcion: string;
   estado: 'ABIERTA' | 'EN_ATENCION' | 'CERRADA';
+}
+
+function roundToMillis(value: number): number {
+  // milésimas => 3 decimales
+  return Math.round(value * 1000) / 1000;
 }
 
 export default function EditFaultModal({ isOpen, onClose, falla }: EditFaultModalProps) {
@@ -72,12 +77,14 @@ export default function EditFaultModal({ isOpen, onClose, falla }: EditFaultModa
         throw new Error('Ingresa un kilómetro válido (debe ser mayor o igual a 0)');
       }
 
+      const kmRounded = roundToMillis(km);
+
       const tipo = data.tipo.trim();
       if (!tipo) throw new Error('Indica el tipo de falla');
 
       await updateFalla(falla.id, {
         lineaId: data.lineaId,
-        km,
+        km: kmRounded,
         tipo,
         descripcion: data.descripcion?.trim() ? data.descripcion.trim() : null,
         estado: data.estado,
@@ -116,9 +123,7 @@ export default function EditFaultModal({ isOpen, onClose, falla }: EditFaultModa
     return (
       <Modal isOpen={isOpen} onClose={handleClose} title="Acceso Denegado" size="md">
         <div className="text-center py-6">
-          <p className="text-[#6B7280] mb-4">
-            Solo los administradores pueden editar fallas.
-          </p>
+          <p className="text-[#6B7280] mb-4">Solo los administradores pueden editar fallas.</p>
           <Button variant="secondary" onClick={handleClose}>
             Cerrar
           </Button>
@@ -148,14 +153,14 @@ export default function EditFaultModal({ isOpen, onClose, falla }: EditFaultModa
         <Input
           label="Kilómetro"
           icon={<MapPin className="w-4 h-4" />}
-          placeholder="12.5"
+          placeholder="12.345"
           type="number"
-          step="0.1"
+          step="0.001"
           min="0"
           value={formData.km ?? ''}
           onChange={(e) => {
             const v = e.target.value;
-            setFormData({ ...formData, km: v === '' ? null : Number(v) });
+            setFormData({ ...formData, km: v === '' ? null : roundToMillis(Number(v)) });
           }}
           required
         />
@@ -189,12 +194,7 @@ export default function EditFaultModal({ isOpen, onClose, falla }: EditFaultModa
             value={formData.fecha}
             onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
           />
-          <Input
-            label="Hora"
-            type="time"
-            value={formData.hora}
-            onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
-          />
+          <Input label="Hora" type="time" value={formData.hora} onChange={(e) => setFormData({ ...formData, hora: e.target.value })} />
         </div>
 
         <Input
@@ -208,9 +208,7 @@ export default function EditFaultModal({ isOpen, onClose, falla }: EditFaultModa
         {updateFallaMutation.isError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
             <p className="text-sm text-red-600">
-              {updateFallaMutation.error instanceof Error
-                ? updateFallaMutation.error.message
-                : 'Error al actualizar la falla'}
+              {updateFallaMutation.error instanceof Error ? updateFallaMutation.error.message : 'Error al actualizar la falla'}
             </p>
           </div>
         )}

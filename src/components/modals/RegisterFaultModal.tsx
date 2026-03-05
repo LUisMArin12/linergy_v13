@@ -35,6 +35,11 @@ interface FaultResult {
   estado: string;
 }
 
+function roundToMillis(value: number): number {
+  // milésimas => 3 decimales
+  return Math.round(value * 1000) / 1000;
+}
+
 type LineaRow = {
   id: string;
   numero: string;
@@ -84,9 +89,7 @@ export default function RegisterFaultModal() {
     queryFn: async () => {
       const q = supabase.from('lineas').select('id,numero,nombre').order('numero');
 
-      const { data, error } = focusedLineId
-        ? await q.eq('id', focusedLineId)
-        : await q;
+      const { data, error } = focusedLineId ? await q.eq('id', focusedLineId) : await q;
 
       if (error) throw error;
       return (data ?? []) as LineaRow[];
@@ -112,12 +115,14 @@ export default function RegisterFaultModal() {
         throw new Error('Ingresa un kilómetro válido (debe ser mayor o igual a 0)');
       }
 
+      const kmRounded = roundToMillis(km);
+
       const tipo = data.tipo.trim();
       if (!tipo) throw new Error('Indica el tipo de falla');
 
       let location: { lat: number; lon: number };
       try {
-        location = await computeFaultLocation(data.lineaId, km);
+        location = await computeFaultLocation(data.lineaId, kmRounded);
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Error al calcular ubicación';
         throw new Error(msg);
@@ -132,9 +137,11 @@ export default function RegisterFaultModal() {
       const geomWkt = `POINT(${lon} ${lat})`;
       const ocurrenciaTs = new Date(`${data.fecha}T${data.hora}`).toISOString();
 
-      const fallaArray = await callRpc<Array<{ id: string; linea_id: string; km: number; tipo: string; descripcion: string | null; estado: string; ocurrencia_ts: string }>>('insert_falla_with_wkt', {
+      const fallaArray = await callRpc<
+        Array<{ id: string; linea_id: string; km: number; tipo: string; descripcion: string | null; estado: string; ocurrencia_ts: string }>
+      >('insert_falla_with_wkt', {
         p_linea_id: data.lineaId,
-        p_km: km,
+        p_km: kmRounded,
         p_tipo: tipo,
         p_descripcion: data.descripcion?.trim() ? data.descripcion.trim() : null,
         p_ocurrencia_ts: ocurrenciaTs,
@@ -155,7 +162,7 @@ export default function RegisterFaultModal() {
 
       if (lineaErr) throw lineaErr;
 
-      return { falla: fallaArray[0], location: { lat, lon }, linea, input: { ...data, km } };
+      return { falla: fallaArray[0], location: { lat, lon }, linea, input: { ...data, km: kmRounded } };
     },
     onSuccess: (data) => {
       const faultResult: FaultResult = {
@@ -229,9 +236,7 @@ export default function RegisterFaultModal() {
     return (
       <Modal isOpen={isRegisterFaultOpen} onClose={handleClose} title="Acceso Denegado" size="md">
         <div className="text-center py-6">
-          <p className="text-[#6B7280] mb-4">
-            Solo los administradores pueden registrar fallas.
-          </p>
+          <p className="text-[#6B7280] mb-4">Solo los administradores pueden registrar fallas.</p>
           <Button variant="secondary" onClick={handleClose}>
             Cerrar
           </Button>
@@ -251,7 +256,6 @@ export default function RegisterFaultModal() {
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* ✅ Si hay foco (lineId): mostramos solo lectura para evitar registrar en otra línea */}
           {focusedLineId ? (
             <div>
               <label className="block text-sm font-medium text-[#111827] mb-2">Línea</label>
@@ -283,14 +287,14 @@ export default function RegisterFaultModal() {
           <Input
             label="Kilómetro"
             icon={<MapPin className="w-4 h-4" />}
-            placeholder="12.5"
+            placeholder="12.345"
             type="number"
-            step="0.1"
+            step="0.001"
             min="0"
             value={formData.km ?? ''}
             onChange={(e) => {
               const v = e.target.value;
-              setFormData({ ...formData, km: v === '' ? null : Number(v) });
+              setFormData({ ...formData, km: v === '' ? null : roundToMillis(Number(v)) });
             }}
             required
           />
@@ -312,12 +316,7 @@ export default function RegisterFaultModal() {
               value={formData.fecha}
               onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
             />
-            <Input
-              label="Hora"
-              type="time"
-              value={formData.hora}
-              onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
-            />
+            <Input label="Hora" type="time" value={formData.hora} onChange={(e) => setFormData({ ...formData, hora: e.target.value })} />
           </div>
 
           <Input
@@ -331,9 +330,7 @@ export default function RegisterFaultModal() {
           {createFallaMutation.isError && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-sm text-red-600">
-                {createFallaMutation.error instanceof Error
-                  ? createFallaMutation.error.message
-                  : 'Error al registrar la falla'}
+                {createFallaMutation.error instanceof Error ? createFallaMutation.error.message : 'Error al registrar la falla'}
               </p>
             </div>
           )}
@@ -342,13 +339,7 @@ export default function RegisterFaultModal() {
             <Button type="submit" variant="primary" className="flex-1" disabled={createFallaMutation.isPending}>
               {createFallaMutation.isPending ? 'Registrando...' : 'Registrar falla'}
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleClose}
-              className="flex-1"
-              disabled={createFallaMutation.isPending}
-            >
+            <Button type="button" variant="secondary" onClick={handleClose} className="flex-1" disabled={createFallaMutation.isPending}>
               Cancelar
             </Button>
           </div>
