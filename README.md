@@ -294,9 +294,8 @@ supabase functions deploy compute-fault-location
 Configurar secretos en Supabase:
 
 ```
-SUPABASE_URL
-SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_URL:https://zsleyqejarzynwjrufuo.supabase.co
+SUPABASE_ANON_KEY:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbGV5cWVqYXJ6eW53anJ1ZnVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTQwNTIsImV4cCI6MjA4NjgzMDA1Mn0.OUq4_t1Z5_kXBzlCac7o6V6RWOpJlcxyfq6LVvM3Gxs
 ```
 
 ---
